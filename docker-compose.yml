@@ -1,0 +1,77 @@
+
+# docker-compose  official documentation:
+# https://docs.docker.com/compose/compose-file/
+
+# docker-compose version to be used must be mentioned at the top
+version: '3'
+
+# put the services and their settings inside "services"
+services:
+  chatbot_jupyter_flask_2:
+    build: .
+    container_name: chatbot_jupyter_flask_2
+    restart: always
+    ports:
+    # Expose ports.
+    # Either specify both ports (HOST:CONTAINER),
+    # or just the container port (an ephemeral host port is chosen).
+    # When mapping ports in the HOST:CONTAINER format,
+    # you may experience erroneous results
+    # when using a container port lower than 60,
+    # because YAML parses numbers in the format xx:yy as a base-60 value.
+    # For this reason, we recommend always explicitly specifying
+    # your port mappings as strings.
+      - '9257:8888' # host:jupyter # flask default setting listening on 127.0.0.1:8888
+      - '80:5000' # host:flask # flask default setting listening on 127.0.0.1:5000
+    links:
+      - redis_links_jupyter
+      - mongo_links_jupyter
+    volumes:
+      - ./materials:/home/jovyan/work
+    command: start-notebook.sh --NotebookApp.token='howdoyouturnthison8888'
+    environment:
+      - 'GRANT_SUDO: yes'
+
+  chatbot_ngrok:
+    image: wernight/ngrok
+    container_name: chatbot_ngrok_2
+    restart: always
+    depends_on:
+    # Express dependency between services:
+    # chatbot_jupyter_flask will be started before ngrok, but will not wait
+    # for that chatbot_jupyter_flask to be ready.
+    # depends_on only garantee the starting order.
+      - chatbot_jupyter_flask_2
+    ports:
+      - "54088:4040"
+    links:
+      - chatbot_jupyter_flask_2:http
+    command: ngrok http --authtoken=5qcUywWZznDAKgkH7iJpQ_5GmN9BX4RmLzC71w1G2jY chatbot_jupyter_flask_2:5000
+
+  redis_links_jupyter:
+    image: redislabs/rejson
+    container_name: redis_links_jupyter_2
+    restart: always
+    ports:
+    - "6379:6379"
+    volumes:
+    - ./redis_data:/data
+    command: redis-server --requirepass "howdoyouturnthison6379"
+
+  mongo_links_jupyter:
+    image: mongo
+    container_name: mongo_links_jupyter
+    restart: always
+    ports:
+      - '27027:27017'
+    environment:
+      - MONGO_DATA_DIR=/data/db
+      - MONGO_LOG_DIR=/data/logs
+      - MONGO_INITDB_DATABASE=admin
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+    volumes:
+    - ./mongodb_data/data:/data/db
+    - ./mongodb_data/conf:/etc/conf
+    - ./mongodb_data/logs:/data/logs
+    command: mongod --auth --smallfiles --logpath /data/logs/mongodb.log
