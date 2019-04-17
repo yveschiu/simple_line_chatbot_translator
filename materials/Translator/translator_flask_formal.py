@@ -217,7 +217,7 @@ def translate(event):
     if event.message.text.find("^to_") != -1:  # find("pattern")回傳值型態為 int， 若有這個字串，回傳0：沒有這個字串則回傳-1
         user_lang_modified = _changSettings()
         change_settings_msg = TextSendMessage(
-            "The translated language is successfully changed to %s."(event.message.text[4:]))
+            "The translated language is successfully changed to %s."%(event.message.text[4:]))
         line_bot_api.reply_message(event.reply_token,
                                    change_settings_msg
                                    )
